@@ -1,0 +1,44 @@
+[project]
+name = "lapo"
+version = "0.1.0"
+description = "LAPo (Local Action Bridge with Endpoint Prior) — act-free VLA experiment on X-VLA"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    # lerobot 0.4.4 是当前已验证版本；0.5.0 未发布到 PyPI。
+    # import 路径在 lerobot.common.* / lerobot.* 间变化，由 lapo.train.compat 处理。
+    "lerobot>=0.4.4,<0.5.0",
+    # torch/torchvision 版本对绑定；2.6.0+0.21.0 满足 lerobot 0.4.4 约束。
+    "torch>=2.6.0,<2.11.0",
+    "torchvision>=0.21.0",
+    # transformers 必须 <5.0.0：lerobot 0.4.4 的 dataclass config 与 5.x 不兼容，
+    # 5.x 会破坏 PretrainedConfig 导致 groot/xvla import 崩溃。详见 TROUBLESHOOTING #4。
+    "transformers>=4.57.1,<5.0.0",
+    "accelerate>=1.10.0",
+    "peft>=0.18.0",
+    "pyyaml>=6.0",
+    "tqdm>=4.65.0",
+    "typer>=0.12",
+    "rich>=13.7",
+    "pydantic>=2.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "ruff"]
+
+[project.scripts]
+lapo-train = "lapo.train.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["lapo"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 100

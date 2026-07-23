@@ -1,0 +1,77 @@
+# 最终 phase1: SIGReg + delta loss(不freeze) + soft clamp
+# 关键修复:
+#   1. SIGReg 之前被创建但从未调用 → mag_z 无约束膨胀到4.3。现在接上。
+#   2. freeze_zt=true 切断了 encoder task 梯度 → encoder 只靠VICReg学得慢。
+#      改 false: delta loss 梯度经 g→z_t→encoder, SIGReg 防膨胀(替代 freeze 的防坍缩)。
+#   3. soft clamp (log1p) 修复 mag loss 梯度归零 bug。
+
+policy: sbvla
+strategy: sbvla
+
+dataset:
+  repo_id: openarm/openarm_pick_place_green277_ee6d
+  root: /home/gacii/lr-home/datasets/openarm/openarm_pick_place_green277_ee6d
+  task_instruction: null
+  state_key: observation.state
+  action_key: action
+  image_key: observation.images.overhead
+  rename_map:
+    observation.images.overhead: observation.images.image2
+    observation.images.wrist_right: observation.images.image3
+  val_ratio: 0.1
+
+policy_overrides:
+  base_model: lerobot/xvla-base
+  phase: 1
+  action_mode: ee6d
+  max_action_dim: 32
+  empty_cameras: 1
+  dtype: float32
+  gamma_sigreg: 0.1
+  K_imle: 4
+  N_steps: 5
+  sigma_peak: 0.48
+  # delta-space loss + 不 freeze（task 梯度流回 encoder）
+  use_delta_loss: true
+  delta_loss_freeze_zt: false          # 关掉 freeze：encoder 有 task 信号，SIGReg 防膨胀
+  w_loss_full: 0.0
+  w_dir_delta: 1.0
+  w_mag_ratio: 0.2             # CORR2 验证值
+  w_delta_mse: 0.5             # CORR2 验证值 (压精度主力)
+  delta_mask_tau: 0.05
+  delta_mag_floor: 0.03
+  mag_loss_clip: 9.0             # soft clamp (log1p): 修 hard clamp 梯度归零 bug
+  # VICReg: corr cov (scale-invariant) + 降 var push
+  lambda_vic_var: 1.0
+  lambda_vic_cov: 0.02
+  vic_cov_mode: corr           # CORR2 验证值
+  gamma_vic: 0.5               # CORR2 验证值
+  p0_freeze_encoder: false
+  encoder_lr_mult: 1.0
+  use_delta_vicreg: false
+  log_encoder_grad_norm: true
+
+training:
+  num_steps: 20000
+  save_every: 2500
+  val_every: 500
+  log_every: 10
+  batch_size: 24
+  num_workers: 4
+  lr: 0.0001
+  weight_decay: 0.0001
+  grad_clip_norm: 10.0
+  grad_accumulation_steps: 2
+  adam_beta1: 0.9
+  adam_beta2: 0.95
+  seed: 42
+  device: cuda:0
+  dtype: float32
+  scheduler_warmup_steps: 1000
+  scheduler_decay_steps: 20000
+  scheduler_decay_lr: 0.0000025
+  ddp: true
+  fsdp: false
+  grad_checkpoint: false
+  cooldown_temp: 85
+  resume_from: null            # 从头训练

@@ -1,0 +1,33 @@
+# X-VLA fine-tuning on OpenArm (v2 config schema).
+#
+# X-VLA 的迁移性来自 soft prompt（可学习的 embodiment/task token）。
+# v2 框架自动为 xvla policy 选用 xvla_sp strategy（三档差异学习率），
+# 无需在 YAML 显式写 strategy。如要换标准策略，加 `strategy: default`。
+#
+# 用法: lapo-train --config configs/openarm_xvla.yaml
+
+policy: xvla
+# strategy 省略 → 自动用 xvla（推荐 = xvla_sp）
+
+dataset:
+  repo_id: openarm/your_task
+  task_instruction: "Pick up the object and place it in the target location."
+  image_key: observation.images.global
+  state_key: observation.state
+  action_key: action
+
+policy_overrides:
+  dtype: bfloat16
+  # base_model / freeze 等在此覆盖（透传给 policy config）
+
+training:
+  batch_size: 1
+  num_workers: 0
+  num_steps: 1
+  lr: 0.0001                         # policy transformer / action head 基础学习率
+  lr_vlm_scale: 0.1                  # VLM 参数 lr = lr * 0.1（xvla_sp strategy 用）
+  lr_soft_prompt_scale: 1.0          # soft prompt lr = lr * 1.0
+  weight_decay: 0.0
+  grad_clip_norm: 10.0
+  seed: 42
+  device: auto

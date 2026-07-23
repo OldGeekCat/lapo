@@ -1,0 +1,62 @@
+policy: lapo
+strategy: lapo
+dataset:
+  repo_id: openarm/openarm_pick_place_green277_ee6d
+  root: /home/gacii/lr-home/datasets/openarm/openarm_pick_place_green277_ee6d
+  task_instruction: null
+  state_key: observation.state
+  action_key: action
+  image_key: observation.images.overhead
+  rename_map:
+    observation.images.overhead: observation.images.image2
+    observation.images.wrist_right: observation.images.image3
+  val_ratio: 0.1
+policy_overrides:
+  base_model: lerobot/xvla-base
+  action_mode: ee6d
+  max_action_dim: 32
+  empty_cameras: 1
+  dtype: float32
+  horizon: 30
+  cond_dim: 512
+  decoder_hidden: 512
+  decoder: sb
+  sb_hidden: 128
+  K_imle: 4
+  N_steps: 5
+  sigma_peak: 0.48
+  k_p: 4.0
+  k_d: 4.0
+  lambda_force: 0.1
+  endpoint_source: joint
+  pred_hidden: 1024
+  pred_depth: 6
+  lang_dim: 1024
+  use_progress: true
+  p_oracle_start: 0.5
+  p_oracle_end: 0.0
+  joint_lr_mult: 0.1
+training:
+  num_steps: 10000
+  save_every: 2500
+  val_every: 500
+  log_every: 10
+  batch_size: 48
+  num_workers: 4
+  lr: 5.0e-05
+  weight_decay: 0.0001
+  grad_clip_norm: 1.0
+  grad_accumulation_steps: 1
+  adam_beta1: 0.9
+  adam_beta2: 0.95
+  seed: 42
+  device: cuda:0
+  dtype: float32
+  scheduler_warmup_steps: 200
+  scheduler_decay_steps: 10000
+  scheduler_decay_lr: 1.0e-06
+  ddp: true
+  fsdp: false
+  grad_checkpoint: false
+  cooldown_temp: 85
+  resume_from: /home/gacii/lr-home/outputs/20260717_1630_lapo_edfc/checkpoints/final

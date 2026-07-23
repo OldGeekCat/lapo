@@ -1,0 +1,63 @@
+# LAPo Stage 2: Oracle Endpoint + Schrödinger Bridge
+# 从 Stage 1 checkpoint resume, 冻 encoder+condition_encoder, 只训 SB bridge。
+# condition = ConditionEncoder([z_t, e_t, e_t-z_t]) 不变, decoder 换成 SB。
+
+policy: lapo
+strategy: lapo
+
+dataset:
+  repo_id: openarm/openarm_pick_place_green277_ee6d
+  root: /home/gacii/lr-home/datasets/openarm/openarm_pick_place_green277_ee6d
+  task_instruction: null
+  state_key: observation.state
+  action_key: action
+  image_key: observation.images.overhead
+  rename_map:
+    observation.images.overhead: observation.images.image2
+    observation.images.wrist_right: observation.images.image3
+  val_ratio: 0.1
+
+policy_overrides:
+  base_model: lerobot/xvla-base
+  action_mode: ee6d
+  max_action_dim: 32
+  empty_cameras: 1
+  dtype: float32
+  horizon: 30
+  cond_dim: 512
+  decoder_hidden: 512
+  # Stage 2: SB bridge
+  decoder: sb
+  sb_hidden: 128
+  K_imle: 4
+  N_steps: 5
+  sigma_peak: 0.48
+  k_p: 4.0
+  k_d: 4.0
+  lambda_force: 0.1
+  endpoint_source: oracle
+
+training:
+  num_steps: 10000               # SB 比 direct 难训, 但冻了 encoder 起点好
+  save_every: 2500
+  val_every: 500
+  log_every: 10
+  batch_size: 48                 # SB 有 K=4 候选, 显存比 direct 重, 稍降 batch
+  num_workers: 4
+  lr: 0.0001
+  weight_decay: 0.0001
+  grad_clip_norm: 1.0
+  grad_accumulation_steps: 1
+  adam_beta1: 0.9
+  adam_beta2: 0.95
+  seed: 42
+  device: cuda:0
+  dtype: float32
+  scheduler_warmup_steps: 500
+  scheduler_decay_steps: 10000
+  scheduler_decay_lr: 0.0000025
+  ddp: true
+  fsdp: false
+  grad_checkpoint: false
+  cooldown_temp: 85
+  resume_from: /home/gacii/lr-home/outputs/20260715_1739_lapo_4354/checkpoints/final
